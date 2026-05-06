@@ -13,16 +13,35 @@ import (
 )
 
 func main() {
+
+	// Initialize database connection
 	db.Init()
 
-	repo := repository.NewLogRepository(db.DB)
-	svc := service.NewLogService(repo)
-	svc.StartWorkers(3)
-	h := handler.NewHandler(svc)
+	// Repositories
+	logRepo := repository.NewLogRepository(db.DB)
+	alertRepo := repository.NewAlertRepository(db.DB)
 
+	// Services
+	alertService := service.NewAlertService(alertRepo)
+
+	logService := service.NewLogService(
+		logRepo,
+		alertService,
+	)
+
+	// Start worker pool
+	logService.StartWorkers(3)
+
+	// Handlers
+	h := handler.NewHandler(logService)
+	alertHandler := handler.NewAlertHandler(alertService)
+
+	// Routes
 	mux := http.NewServeMux()
 	mux.HandleFunc("/logs", h.IngestLog)
+	mux.HandleFunc("/alerts", alertHandler.GetAlerts)
 
+	// Middleware chain
 	finalHandler := middleware.RequestID(
 		middleware.Logging(
 			middleware.RateLimit(mux),
@@ -31,6 +50,7 @@ func main() {
 
 	fmt.Println("Server running on port 8080")
 
+	// Start HTTP server
 	err := http.ListenAndServe(":8080", finalHandler)
 	if err != nil {
 		log.Fatal(err)

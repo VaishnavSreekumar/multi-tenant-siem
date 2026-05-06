@@ -18,10 +18,15 @@ func (s *LogService) worker(id int) {
 
 	for logData := range queue.LogQueue {
 
-		// Run anomaly detection
-		detection.DetectBruteForce(logData)
+		// Run detection engine
+		alert := detection.DetectBruteForce(logData)
 
-		// Store log in DB
+		// Store alert if detected
+		if alert != nil {
+			s.alertService.CreateAlert(*alert)
+		}
+
+		// Store log
 		err := s.ProcessLog(logData)
 		if err != nil {
 			fmt.Println("Worker DB error:", err)

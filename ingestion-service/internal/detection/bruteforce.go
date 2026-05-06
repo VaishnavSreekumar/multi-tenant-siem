@@ -1,7 +1,6 @@
 package detection
 
 import (
-	"fmt"
 	"sync"
 	"time"
 
@@ -18,15 +17,15 @@ var (
 	mutex        sync.Mutex
 )
 
-func DetectBruteForce(log model.Log) {
-	// Only monitor failed login messages
+func DetectBruteForce(log model.Log) *model.Alert {
+
 	if log.Level != "ERROR" {
-		return
+		return nil
 	}
 
 	ip, ok := log.Metadata["ip"].(string)
 	if !ok {
-		return
+		return nil
 	}
 
 	mutex.Lock()
@@ -40,27 +39,33 @@ func DetectBruteForce(log model.Log) {
 			LastAttempt: time.Now(),
 		}
 
-		return
+		return nil
 	}
 
-	// Reset counter after 1 minute
+	// Reset after 1 minute
 	if time.Since(entry.LastAttempt) > time.Minute {
 		entry.Count = 1
 		entry.LastAttempt = time.Now()
-		return
+		return nil
 	}
 
 	entry.Count++
 	entry.LastAttempt = time.Now()
 
 	if entry.Count >= 5 {
-		fmt.Printf(
-			"🚨 BRUTE FORCE DETECTED: IP=%s attempts=%d\n",
-			ip,
-			entry.Count,
-		)
 
-		// reset after alert
+		alert := &model.Alert{
+			TenantID:  log.TenantID,
+			AlertType: "BRUTE_FORCE",
+			Severity:  "HIGH",
+			Message:   "Multiple failed login attempts detected",
+			SourceIP:  ip,
+		}
+
 		entry.Count = 0
+
+		return alert
 	}
+
+	return nil
 }

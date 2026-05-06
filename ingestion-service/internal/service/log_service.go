@@ -7,12 +7,18 @@ import (
 )
 
 type LogService struct {
-	repo *repository.LogRepository
+	repo         *repository.LogRepository
+	alertService *AlertService
 }
 
-func NewLogService(repo *repository.LogRepository) *LogService {
+func NewLogService(
+	repo *repository.LogRepository,
+	alertService *AlertService,
+) *LogService {
+
 	return &LogService{
-		repo: repo,
+		repo:         repo,
+		alertService: alertService,
 	}
 }
 
@@ -21,7 +27,7 @@ func (s *LogService) EnqueueLog(log model.Log) {
 	queue.LogQueue <- log
 }
 
-// Actual DB insert
+// Store log in database
 func (s *LogService) ProcessLog(log model.Log) error {
 	return s.repo.InsertLog(log)
 }
