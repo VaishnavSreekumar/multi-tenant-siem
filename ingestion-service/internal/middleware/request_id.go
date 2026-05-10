@@ -7,9 +7,7 @@ import (
 	"time"
 )
 
-type contextKey string
-
-const RequestIDKey contextKey = "request_id"
+const RequestIDKey ContextKey = "request_id"
 
 func generateRequestID() string {
 	return time.Now().Format("20060102150405") + "-" + string(rune(rand.Intn(10000)))

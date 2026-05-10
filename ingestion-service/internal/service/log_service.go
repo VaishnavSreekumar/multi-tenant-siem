@@ -1,10 +1,42 @@
 package service
 
 import (
-	"siem/ingestion-service/internal/model"
-	"siem/ingestion-service/internal/queue"
-	"siem/ingestion-service/internal/repository"
+	"siem/internal/model"
+	"siem/internal/queue"
+	"siem/internal/repository"
 )
+
+func isSuspiciousPath(
+	path string,
+) bool {
+
+	suspiciousPaths := []string{
+		"/admin",
+		"/wp-admin",
+		"/wp-login.php",
+		"/phpmyadmin",
+		"/.env",
+		"/.git/config",
+		"/config.php",
+		"/backup.zip",
+	}
+
+	for _, suspicious := range suspiciousPaths {
+
+		if path == suspicious {
+			return true
+		}
+	}
+
+	return false
+}
+
+func extractIP(log model.Log) string {
+	if ip, ok := log.Metadata["ip"].(string); ok {
+		return ip
+	}
+	return "unknown"
+}
 
 type LogService struct {
 	repo         *repository.LogRepository

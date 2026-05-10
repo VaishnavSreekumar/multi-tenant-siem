@@ -5,11 +5,12 @@ import (
 	"log"
 	"net/http"
 
-	"siem/ingestion-service/internal/db"
-	"siem/ingestion-service/internal/handler"
-	"siem/ingestion-service/internal/middleware"
-	"siem/ingestion-service/internal/repository"
-	"siem/ingestion-service/internal/service"
+	"siem/internal/db"
+	"siem/internal/handler"
+	"siem/internal/middleware"
+	"siem/internal/repository"
+	"siem/internal/service"
+	"siem/internal/websocket"
 )
 
 func main() {
@@ -18,40 +19,114 @@ func main() {
 	db.Init()
 
 	// Repositories
-	logRepo := repository.NewLogRepository(db.DB)
-	alertRepo := repository.NewAlertRepository(db.DB)
+	logRepo := repository.NewLogRepository(
+		db.DB,
+	)
+
+	alertRepo := repository.NewAlertRepository(
+		db.DB,
+	)
+
+	analyticsRepo := repository.NewAnalyticsRepository(
+		db.DB,
+	)
 
 	// Services
-	alertService := service.NewAlertService(alertRepo)
+	alertService := service.NewAlertService(
+		alertRepo,
+	)
 
 	logService := service.NewLogService(
 		logRepo,
 		alertService,
 	)
 
+	analyticsService := service.NewAnalyticsService(
+		analyticsRepo,
+	)
+
 	// Start worker pool
 	logService.StartWorkers(3)
 
 	// Handlers
-	h := handler.NewHandler(logService)
-	alertHandler := handler.NewAlertHandler(alertService)
+	logHandler := handler.NewHandler(
+		logService,
+	)
 
-	// Routes
+	alertHandler := handler.NewAlertHandler(
+		alertService,
+	)
+
+	analyticsHandler := handler.NewAnalyticsHandler(
+		analyticsService,
+	)
+
+	// Router
 	mux := http.NewServeMux()
-	mux.HandleFunc("/logs", h.IngestLog)
-	mux.HandleFunc("/alerts", alertHandler.GetAlerts)
 
-	// Middleware chain
-	finalHandler := middleware.RequestID(
-		middleware.Logging(
-			middleware.RateLimit(mux),
+	// Log ingestion endpoint
+	mux.HandleFunc(
+		"/logs",
+		logHandler.IngestLog,
+	)
+
+	// Alerts API
+	mux.Handle(
+		"/alerts",
+		middleware.Auth(
+			http.HandlerFunc(
+				alertHandler.GetAlerts,
+			),
 		),
 	)
 
-	fmt.Println("Server running on port 8080")
+	// Traffic analytics API
+	mux.HandleFunc(
+		"/analytics/traffic",
+		analyticsHandler.GetTrafficAnalytics,
+	)
 
-	// Start HTTP server
-	err := http.ListenAndServe(":8080", finalHandler)
+	// Status code analytics API
+	mux.HandleFunc(
+		"/analytics/status-codes",
+		analyticsHandler.GetStatusCodeAnalytics,
+	)
+
+	// Top paths analytics API
+	mux.HandleFunc(
+		"/analytics/top-paths",
+		analyticsHandler.GetTopPaths,
+	)
+
+	// WebSocket endpoint
+	mux.HandleFunc(
+		"/ws",
+		websocket.WS.HandleConnections,
+	)
+	mux.HandleFunc(
+		"/analytics/attackers",
+		analyticsHandler.GetAttackers,
+	)
+
+	// Middleware chain
+	finalHandler := middleware.CORS(
+		middleware.RequestID(
+			middleware.Logging(
+				middleware.RateLimit(mux),
+			),
+		),
+	)
+
+	fmt.Println(
+		"🚀 Server running on port 8080",
+	)
+
+	// Start server
+	err := http.ListenAndServe(
+		":8080",
+		finalHandler,
+	)
+
 	if err != nil {
 		log.Fatal(err)
 	}

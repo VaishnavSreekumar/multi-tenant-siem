@@ -1,0 +1,48 @@
+services:
+
+  postgres:
+    image: postgres:15
+
+    container_name: siem-postgres
+
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: root
+      POSTGRES_DB: siem
+
+    ports:
+      - "5433:5432"
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d siem"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  ingestion-service:
+    build:
+      context: ./ingestion-service
+
+    container_name: siem-ingestion
+
+    ports:
+      - "8080:8080"
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: admin
+      DB_PASSWORD: root
+      DB_NAME: siem
+
+    restart: unless-stopped
+
+volumes:
+  postgres_data:

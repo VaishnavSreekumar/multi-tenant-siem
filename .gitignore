@@ -1,27 +1,72 @@
+# ----------------------------
+# GO
+# ----------------------------
+
 # Binaries
 *.exe
 *.exe~
 *.dll
 *.so
 *.dylib
+*.out
 
-# Go build files
+# Build folders
 bin/
 dist/
+build/
+
+# Coverage
+coverage.out
 
 # Go workspace
 go.work
 
-# Environment files
-.env
+# Go cache
+*.test
 
+# ----------------------------
+# NODE / REACT / VITE
+# ----------------------------
+
+node_modules/
+frontend/node_modules/
+
+frontend/dist/
+frontend/build/
+
+# Vite
+.vite/
+
+# ----------------------------
+# ENVIRONMENT
+# ----------------------------
+
+.env
+.env.local
+.env.production
+
+# ----------------------------
+# LOGS
+# ----------------------------
+
+*.log
+
+# ----------------------------
+# DOCKER
+# ----------------------------
+
+postgres_data/
+
+# ----------------------------
 # IDE
+# ----------------------------
+
 .vscode/
 .idea/
 
-# Logs
-*.log
+# ----------------------------
+# OS FILES
+# ----------------------------
 
-# OS files
 .DS_Store
 Thumbs.db

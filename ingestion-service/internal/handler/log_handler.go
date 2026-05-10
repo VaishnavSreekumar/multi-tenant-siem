@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"net/http"
 
-	"siem/ingestion-service/internal/model"
-	"siem/ingestion-service/internal/service"
-	"siem/ingestion-service/internal/validator"
+	"siem/internal/model"
+	"siem/internal/service"
+	"siem/internal/validator"
 )
 
 type Handler struct {

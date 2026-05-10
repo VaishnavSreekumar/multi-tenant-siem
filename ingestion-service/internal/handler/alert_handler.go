@@ -4,7 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"siem/ingestion-service/internal/service"
+	"siem/internal/middleware"
+	"siem/internal/service"
 )
 
 type AlertHandler struct {
@@ -25,17 +26,48 @@ func (h *AlertHandler) GetAlerts(
 	r *http.Request,
 ) {
 
-	alerts, err := h.service.GetAlerts()
+	tenantID, ok := r.Context().Value(
+		middleware.TenantContextKey,
+	).(string)
+
+	if !ok {
+
+		http.Error(
+			w,
+			"tenant not found",
+			http.StatusUnauthorized,
+		)
+
+		return
+	}
+
+	if tenantID == "" {
+
+		http.Error(
+			w,
+			"tenant_id is required",
+			http.StatusBadRequest,
+		)
+
+		return
+	}
+
+	alerts, err := h.service.GetAlerts(tenantID)
 	if err != nil {
+
 		http.Error(
 			w,
 			"failed to fetch alerts",
 			http.StatusInternalServerError,
 		)
+
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set(
+		"Content-Type",
+		"application/json",
+	)
 
 	json.NewEncoder(w).Encode(alerts)
 }

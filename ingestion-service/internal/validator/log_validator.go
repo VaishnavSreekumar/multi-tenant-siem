@@ -4,7 +4,7 @@ import (
 	"errors"
 	"time"
 
-	"siem/ingestion-service/internal/model"
+	"siem/internal/model"
 )
 
 func ValidateLog(log model.Log) error {

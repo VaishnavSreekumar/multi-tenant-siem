@@ -3,14 +3,17 @@ package repository
 import (
 	"database/sql"
 
-	"siem/ingestion-service/internal/model"
+	"siem/internal/model"
 )
 
 type AlertRepository struct {
 	DB *sql.DB
 }
 
-func NewAlertRepository(db *sql.DB) *AlertRepository {
+func NewAlertRepository(
+	db *sql.DB,
+) *AlertRepository {
+
 	return &AlertRepository{
 		DB: db,
 	}
@@ -19,7 +22,7 @@ func NewAlertRepository(db *sql.DB) *AlertRepository {
 // Store alert in database
 func (r *AlertRepository) CreateAlert(
 	alert model.Alert,
-) error {
+) (model.Alert, error) {
 
 	query := `
 	INSERT INTO alerts (
@@ -30,25 +33,34 @@ func (r *AlertRepository) CreateAlert(
 		source_ip
 	)
 	VALUES ($1, $2, $3, $4, $5)
+	RETURNING
+		id,
+		created_at
 	`
 
-	_, err := r.DB.Exec(
+	err := r.DB.QueryRow(
 		query,
 		alert.TenantID,
 		alert.AlertType,
 		alert.Severity,
 		alert.Message,
 		alert.SourceIP,
+	).Scan(
+		&alert.ID,
+		&alert.CreatedAt,
 	)
 
-	return err
+	if err != nil {
+		return model.Alert{}, err
+	}
+
+	return alert, nil
 }
 
-// Fetch all alerts
-func (r *AlertRepository) GetAlerts() (
-	[]model.Alert,
-	error,
-) {
+// Fetch alerts by tenant
+func (r *AlertRepository) GetAlerts(
+	tenantID string,
+) ([]model.Alert, error) {
 
 	query := `
 	SELECT
@@ -60,13 +72,19 @@ func (r *AlertRepository) GetAlerts() (
 		source_ip,
 		created_at
 	FROM alerts
+	WHERE tenant_id = $1
 	ORDER BY created_at DESC
 	`
 
-	rows, err := r.DB.Query(query)
+	rows, err := r.DB.Query(
+		query,
+		tenantID,
+	)
+
 	if err != nil {
 		return nil, err
 	}
+
 	defer rows.Close()
 
 	var alerts []model.Alert
@@ -89,7 +107,10 @@ func (r *AlertRepository) GetAlerts() (
 			return nil, err
 		}
 
-		alerts = append(alerts, alert)
+		alerts = append(
+			alerts,
+			alert,
+		)
 	}
 
 	return alerts, nil

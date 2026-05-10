@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 
-	"siem/ingestion-service/internal/model"
+	"siem/internal/model"
 )
 
 type LogRepository struct {
