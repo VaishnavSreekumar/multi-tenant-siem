@@ -148,9 +148,8 @@ export default function App() {
 
     fetchAttackers()
 
-    const socket = new WebSocket(
-      'ws://localhost:8080/ws'
-    )
+    const wsUrl = import.meta.env.VITE_WS_URL || 'ws://localhost:8080';
+    const socket = new WebSocket(`${wsUrl}/ws`);
 
     socket.onopen = () => {
 
@@ -206,9 +205,8 @@ export default function App() {
 
     try {
 
-      const response = await fetch(
-        'http://localhost:8080/alerts',
-        {
+      const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+      const response = await fetch(`${apiBaseUrl}/alerts`, {
           headers: {
             'x-api-key':
               'tenant1-secret-key',
@@ -238,9 +236,8 @@ export default function App() {
 
     try {
 
-      const response = await fetch(
-        'http://localhost:8080/analytics/traffic'
-      )
+      const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+      const response = await fetch(`${apiBaseUrl}/analytics/traffic`);
 
       const data =
         await response.json()
@@ -260,9 +257,8 @@ export default function App() {
 
     try {
 
-      const response = await fetch(
-        'http://localhost:8080/analytics/status-codes'
-      )
+      const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+      const response = await fetch(`${apiBaseUrl}/analytics/status-codes`);
 
       const data =
         await response.json()
@@ -291,9 +287,8 @@ export default function App() {
 
     try {
 
-      const response = await fetch(
-        'http://localhost:8080/analytics/attackers'
-      )
+      const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+      const response = await fetch(`${apiBaseUrl}/analytics/attackers`);
 
       const data =
         await response.json()
