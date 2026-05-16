@@ -18,38 +18,84 @@ SentinelX is a production-grade Security Information and Event Management (SIEM)
 
 SentinelX implements a decoupled, asynchronous event-processing architecture:
 
-#### Data Flow Diagram
+#### System Architecture & Data Flow
+
 ```mermaid
-graph TD
-    subgraph "Edge Collection (Log-Agent)"
-        TA[File Tailing] --> AP[Auth Regex Parser]
-        TA --> NP[Nginx Regex Parser]
-        AP & NP -->|Async| KP[Kafka Producer]
-    end
-
-    subgraph "Ingestion & Bus (Kafka)"
-        KP -->|Binary Payload| KAFKA[Apache Kafka Cluster]
-        KAFKA -->|Persistence| KD[(KRaft Storage)]
-    end
-
-    subgraph "Processing & Correlation (Ingestion-Service)"
-        KC[Kafka Consumer] -->|Distribute| WP[Worker Pool]
+graph TB
+    subgraph Edge["🖥️ Edge Collection Layer (Log-Agent)"]
+        AuthLog["📄 /var/log/auth.log<br/>(SSH Events)"]
+        NginxLog["📄 /var/log/nginx/access.log<br/>(HTTP Traffic)"]
         
-        subgraph "Worker Pipeline"
-            WP -->|ACID Batch| PDB[(Postgres)]
-            WP -->|Analyze| BF[Brute Force Detection]
-            WP -->|Analyze| WS[Web Scan Detection]
-            BF & WS -->|Filtering| AS[Alert Suppressor]
-        end
+        AuthLog -->|Tail| AuthParser["🔍 Auth Regex Parser<br/>Extract: IP, User, Status"]
+        NginxLog -->|Tail| NginxParser["🔍 Nginx Regex Parser<br/>Extract: IP, Path, Method, Status"]
     end
 
-    subgraph "Observability & SOC UI"
-        AS -->|Push| WSH[WebSocket Hub]
-        WSH -->|Batch Broadcast| RD[SOC Dashboard]
-        IS[Ingestion Service] -->|Metrics| PROM[Prometheus]
-        PROM -->|Visualize| GRAF[Grafana]
+    subgraph Transport["🚀 Message Bus (Kafka)"]
+        AuthParser -->|Serialize Event| Producer["📤 Kafka Producer"]
+        NginxParser -->|Serialize Event| Producer
+        Producer -->|Topic: logs| Kafka["🎯 Apache Kafka<br/>Partition: 1<br/>Retention: 7 days"]
+        Kafka -->|KRaft Consensus| Storage["💾 KRaft Storage"]
     end
+
+    subgraph Processing["⚙️ Processing Layer (Ingestion-Service)"]
+        Consumer["📥 Kafka Consumer<br/>Read → Acknowledge"]
+        
+        Kafka -->|Poll Events| Consumer
+        Consumer -->|Distribute| Queue["📋 Event Queue<br/>(Channels)"]
+        
+        Queue -->|500 logs OR 2s| Worker1["🔄 Worker 1<br/>Thread #1"]
+        Queue -->|500 logs OR 2s| Worker2["🔄 Worker 2<br/>Thread #2"]
+        Queue -->|500 logs OR 2s| Worker3["🔄 Worker 3<br/>Thread #3"]
+        
+        subgraph WorkerOps["Worker Processing Pipeline"]
+            Worker1 & Worker2 & Worker3 -->|Batch Insert| DBTx["🔐 ACID Transactions<br/>99% overhead reduction"]
+            Worker1 & Worker2 & Worker3 -->|Analyze| BF["🔐 Brute Force Detector<br/>Threshold: 5+ fails/60s"]
+            Worker1 & Worker2 & Worker3 -->|Analyze| WS["🛡️ Web Scan Detector<br/>Suspicious paths: /admin, /.env"]
+        end
+        
+        DBTx -->|Commit| DB[(🗄️ PostgreSQL<br/>Logs, Alerts,<br/>Attackers)]
+        
+        BF & WS -->|Generate| AlertObj["⚠️ Alert Object<br/>Type: Alert{}<br/>Severity: HIGH/CRITICAL"]
+        AlertObj -->|Check State| Suppressor["🚫 Alert Suppressor<br/>Key: AlertType:IP<br/>Window: 5 minutes"]
+    end
+
+    subgraph Realtime["📡 Real-Time Delivery"]
+        Suppressor -->|Valid Alert| WSHub["🔌 WebSocket Hub<br/>Connected Clients: N"]
+        WSHub -->|Batch per second| Broadcast["📢 Broadcast Buffer<br/>Aggregate alerts"]
+    end
+
+    subgraph Frontend["🎨 User Interface"]
+        Broadcast -->|JSON Array| Dashboard["📊 React Dashboard<br/>- Alert Feed<br/>- Risk Leaderboard<br/>- Attacker Map"]
+        Dashboard -->|View| SOCUser["👤 SOC Operator"]
+    end
+
+    subgraph Observability["📈 Observability Stack"]
+        Consumer -->|emit| Metrics["📊 Prometheus Metrics<br/>- events_processed_total<br/>- event_processing_duration<br/>- worker_queue_depth<br/>- alerts_generated_total"]
+        Metrics -->|Scrape :9090| Prometheus["🔍 Prometheus Server"]
+        Prometheus -->|Query| Grafana["📈 Grafana Dashboards<br/>localhost:3000"]
+        Grafana -->|Visualize| Monitor["👀 SRE Monitor"]
+    end
+
+    DB -.->|Query| Dashboard
+    DB -.->|Query| Grafana
 ```
+
+**Process Flow Summary:**
+
+1. **Collection** (Log-Agent): Tail system logs → Parse with regex → Structured events
+2. **Transport** (Kafka): Events serialized → Published to topic → Persisted in KRaft
+3. **Consumption**: Kafka consumer polls topic continuously
+4. **Batching**: Events accumulate in queue until 500 logs OR 2 seconds elapse
+5. **Worker Processing**: 3 workers process batches in parallel:
+   - Insert logs to PostgreSQL (ACID transaction)
+   - Run Brute Force detection (in-memory tracking)
+   - Run Web Scan detection (path enumeration tracking)
+6. **Alert Generation**: Detection engines return Alert objects if thresholds exceeded
+7. **Deduplication**: Alert suppressor filters duplicates (5-min window per AlertType:IP)
+8. **Broadcasting**: Valid alerts pushed to WebSocket hub
+9. **Batching**: WebSocket aggregates alerts, broadcasts once/second to dashboard
+10. **Visualization**: Frontend displays real-time alerts to SOC dashboard
+11. **Observability**: Metrics exported to Prometheus → Grafana dashboards
 
 ---
 
