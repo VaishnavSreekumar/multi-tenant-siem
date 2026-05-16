@@ -110,10 +110,13 @@ func main() {
 		"/ws",
 		websocket.WS.HandleConnections,
 	)
-	mux.HandleFunc(
-		"/analytics/attackers",
-		analyticsHandler.GetAttackers,
-	)
+	mux.HandleFunc("/analytics/attackers", analyticsHandler.GetAttackers)
+
+	// Health check for Render
+	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("OK"))
+	})
 
 	// Prometheus Metrics endpoint
 	mux.Handle("/metrics", promhttp.Handler())

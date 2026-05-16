@@ -3,6 +3,7 @@ package middleware
 import (
 	"context"
 	"net/http"
+	"os"
 )
 
 type ContextKey string
@@ -12,6 +13,14 @@ const TenantContextKey ContextKey = "tenant_id"
 var apiKeys = map[string]string{
 	"tenant1-secret-key": "tenant_1",
 	"tenant2-secret-key": "tenant_2",
+}
+
+func init() {
+	// Allow setting a master key via environment variable
+	masterKey := os.Getenv("MASTER_API_KEY")
+	if masterKey != "" {
+		apiKeys[masterKey] = "admin_tenant"
+	}
 }
 
 func Auth(next http.Handler) http.Handler {
