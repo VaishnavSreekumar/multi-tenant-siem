@@ -127,13 +127,19 @@ func main() {
 		),
 	)
 
-	fmt.Println(
-		"🚀 Server running on port 8080",
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+
+	fmt.Printf(
+		"🚀 Server running on port %s\n",
+		port,
 	)
 
 	// Start server
 	err := http.ListenAndServe(
-		":8080",
+		":"+port,
 		finalHandler,
 	)
 
