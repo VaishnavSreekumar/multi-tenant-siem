@@ -11,8 +11,8 @@ import (
 )
 
 const (
-	SIEMEndpoint = "http://localhost:8080/logs"
-	APIKey       = "tenant1-secret-key"
+	SIEMEndpoint = "https://sentinelx-api-nmop.onrender.com/logs"
+	APIKey       = "SentinelX_Master_Secret_8832_99x_v2"
 )
 
 func SendLog(logData events.Event) error {
