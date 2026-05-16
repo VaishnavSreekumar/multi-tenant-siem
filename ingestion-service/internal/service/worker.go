@@ -2,8 +2,11 @@ package service
 
 import (
 	"fmt"
+	"time"
 
 	"siem/internal/detection"
+	"siem/internal/events"
+	"siem/internal/metrics"
 	"siem/internal/queue"
 )
 
@@ -17,92 +20,66 @@ func (s *LogService) StartWorkers(
 }
 
 func (s *LogService) worker(id int) {
+	fmt.Printf("Worker %d started\n", id)
 
-	fmt.Printf(
-		"Worker %d started\n",
-		id,
-	)
+	batchSize := 500
+	batch := make([]events.Event, 0, batchSize)
+	ticker := time.NewTicker(2 * time.Second)
+	defer ticker.Stop()
 
-	for logData := range queue.LogQueue {
+	flush := func() {
+		metrics.WorkerQueueDepth.Set(float64(len(queue.LogQueue)))
+		
+		if len(batch) == 0 {
+			return
+		}
 
-		// --------------------------------
-		// STORE LOG FIRST
-		// --------------------------------
-
-		err := s.ProcessLog(logData)
-
+		startTime := time.Now()
+		err := s.repo.InsertLogsBatch(batch)
+		duration := time.Since(startTime).Seconds()
+		
 		if err != nil {
-
-			fmt.Println(
-				"Worker DB error:",
-				err,
-			)
-
-			continue
+			fmt.Println("Worker batch DB error:", err)
+		} else {
+			metrics.EventProcessingDuration.Observe(duration)
+			metrics.EventsProcessed.Add(float64(len(batch)))
 		}
 
-		fmt.Printf(
-			"Worker %d processed log from service=%s\n",
-			id,
-			logData.Service,
-		)
+		// Process detection logic for the batch
+		for _, logData := range batch {
+			bruteForceAlert := detection.DetectBruteForce(logData)
+			if bruteForceAlert != nil {
+				err := s.alertService.CreateAlert(*bruteForceAlert)
+				if err != nil {
+					fmt.Println("failed to create brute force alert:", err)
+				}
+			}
 
-		// --------------------------------
-		// SSH BRUTE FORCE DETECTION
-		// --------------------------------
-
-		bruteForceAlert := detection.DetectBruteForce(
-			logData,
-		)
-
-		if bruteForceAlert != nil {
-
-			err := s.alertService.CreateAlert(
-				*bruteForceAlert,
-			)
-
-			if err != nil {
-
-				fmt.Println(
-					"failed to create brute force alert:",
-					err,
-				)
-
-			} else {
-
-				fmt.Println(
-					"🚨 BRUTE_FORCE ALERT CREATED",
-				)
+			webScanAlert := detection.DetectWebScan(logData)
+			if webScanAlert != nil {
+				err := s.alertService.CreateAlert(*webScanAlert)
+				if err != nil {
+					fmt.Println("failed to create web scan alert:", err)
+				}
 			}
 		}
 
-		// --------------------------------
-		// WEB SCAN DETECTION
-		// --------------------------------
+		batch = batch[:0]
+	}
 
-		webScanAlert := detection.DetectWebScan(
-			logData,
-		)
-
-		if webScanAlert != nil {
-
-			err := s.alertService.CreateAlert(
-				*webScanAlert,
-			)
-
-			if err != nil {
-
-				fmt.Println(
-					"failed to create web scan alert:",
-					err,
-				)
-
-			} else {
-
-				fmt.Println(
-					"🚨 WEB_SCAN ALERT CREATED",
-				)
+	for {
+		select {
+		case logData, ok := <-queue.LogQueue:
+			if !ok {
+				flush()
+				return
 			}
+			batch = append(batch, logData)
+			if len(batch) >= batchSize {
+				flush()
+			}
+		case <-ticker.C:
+			flush()
 		}
 	}
 }

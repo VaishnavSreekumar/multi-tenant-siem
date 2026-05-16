@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"siem/internal/model"
+	"siem/internal/events"
 	"siem/internal/service"
 	"siem/internal/validator"
 )
@@ -21,24 +21,24 @@ func NewHandler(service *service.LogService) *Handler {
 }
 
 func (h *Handler) IngestLog(w http.ResponseWriter, r *http.Request) {
-	var logData model.Log
+	var eventData events.Event
 
 	// Decode JSON request body
-	err := json.NewDecoder(r.Body).Decode(&logData)
+	err := json.NewDecoder(r.Body).Decode(&eventData)
 	if err != nil {
 		http.Error(w, "invalid JSON", http.StatusBadRequest)
 		return
 	}
 
 	// Validate log structure
-	err = validator.ValidateLog(logData)
+	err = validator.ValidateLog(eventData)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
 	// Store log in PostgreSQL
-	h.service.EnqueueLog(logData)
+	h.service.EnqueueLog(eventData)
 	if err != nil {
 		fmt.Println("Database error:", err)
 
@@ -52,7 +52,7 @@ func (h *Handler) IngestLog(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Temporary debug print
-	fmt.Println("Received and stored log:", logData)
+	fmt.Println("Received and stored log:", eventData)
 
 	// Success response
 	w.Header().Set("Content-Type", "application/json")

@@ -5,6 +5,7 @@ import (
 	"sync"
 	"time"
 
+	"siem/internal/events"
 	"siem/internal/model"
 )
 
@@ -22,14 +23,14 @@ var (
 )
 
 func DetectWebScan(
-	log model.Log,
+	event events.Event,
 ) *model.Alert {
 
 	// --------------------------------
 	// ONLY PROCESS NGINX LOGS
 	// --------------------------------
 
-	if log.Service != "nginx" {
+	if event.Source != "nginx" {
 		return nil
 	}
 
@@ -37,7 +38,7 @@ func DetectWebScan(
 	// EXTRACT PATH
 	// --------------------------------
 
-	path, ok := log.Metadata["path"].(string)
+	path, ok := event.Payload["path"].(string)
 
 	if !ok {
 
@@ -74,9 +75,8 @@ func DetectWebScan(
 	// EXTRACT SOURCE IP
 	// --------------------------------
 
-	ip, ok := log.Metadata["ip"].(string)
-
-	if !ok {
+	ip := event.IPAddress
+	if ip == "" {
 		ip = "unknown"
 	}
 
@@ -147,7 +147,7 @@ func DetectWebScan(
 		tracker.Count = 0
 
 		return &model.Alert{
-			TenantID:  log.TenantID,
+			TenantID:  event.TenantID,
 			AlertType: "WEB_SCAN",
 			Severity:  "CRITICAL",
 			Message:   "Web scanning behavior detected",

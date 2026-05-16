@@ -1,7 +1,7 @@
 package service
 
 import (
-	"siem/internal/model"
+	"siem/internal/events"
 	"siem/internal/queue"
 	"siem/internal/repository"
 )
@@ -31,9 +31,9 @@ func isSuspiciousPath(
 	return false
 }
 
-func extractIP(log model.Log) string {
-	if ip, ok := log.Metadata["ip"].(string); ok {
-		return ip
+func extractIP(event events.Event) string {
+	if event.IPAddress != "" {
+		return event.IPAddress
 	}
 	return "unknown"
 }
@@ -55,11 +55,11 @@ func NewLogService(
 }
 
 // Add log to queue
-func (s *LogService) EnqueueLog(log model.Log) {
-	queue.LogQueue <- log
+func (s *LogService) EnqueueLog(event events.Event) {
+	queue.LogQueue <- event
 }
 
 // Store log in database
-func (s *LogService) ProcessLog(log model.Log) error {
-	return s.repo.InsertLog(log)
+func (s *LogService) ProcessLog(event events.Event) error {
+	return s.repo.InsertLog(event)
 }

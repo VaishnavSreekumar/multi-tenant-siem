@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 
-	"siem/internal/model"
+	"siem/internal/events"
 )
 
 type LogRepository struct {
@@ -17,8 +17,8 @@ func NewLogRepository(db *sql.DB) *LogRepository {
 	}
 }
 
-func (r *LogRepository) InsertLog(log model.Log) error {
-	metadataJSON, err := json.Marshal(log.Metadata)
+func (r *LogRepository) InsertLog(event events.Event) error {
+	metadataJSON, err := json.Marshal(event.Payload)
 	if err != nil {
 		return err
 	}
@@ -37,13 +37,61 @@ func (r *LogRepository) InsertLog(log model.Log) error {
 
 	_, err = r.DB.Exec(
 		query,
-		log.Timestamp,
-		log.TenantID,
-		log.Service,
-		log.Level,
-		log.Message,
+		event.Timestamp,
+		event.TenantID,
+		event.Source,
+		event.Severity,
+		event.Message,
 		metadataJSON,
 	)
 
 	return err
+}
+
+func (r *LogRepository) InsertLogsBatch(eventsBatch []events.Event) error {
+	if len(eventsBatch) == 0 {
+		return nil
+	}
+
+	tx, err := r.DB.Begin()
+	if err != nil {
+		return err
+	}
+
+	query := `
+    INSERT INTO logs (
+        timestamp,
+        tenant_id,
+        service,
+        level,
+        message,
+        metadata
+    )
+    VALUES ($1, $2, $3, $4, $5, $6)
+    `
+
+	stmt, err := tx.Prepare(query)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	defer stmt.Close()
+
+	for _, event := range eventsBatch {
+		metadataJSON, _ := json.Marshal(event.Payload)
+		_, err = stmt.Exec(
+			event.Timestamp,
+			event.TenantID,
+			event.Source,
+			event.Severity,
+			event.Message,
+			metadataJSON,
+		)
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+	}
+
+	return tx.Commit()
 }

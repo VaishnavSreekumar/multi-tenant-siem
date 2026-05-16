@@ -5,65 +5,49 @@ import (
 	"strconv"
 	"time"
 
-	"siem/log-agent/model"
+	"siem/log-agent/events"
 )
 
 var nginxRegex = regexp.MustCompile(
 	`^(.+?) - - \[(.*?)\] "(\w+) (.*?) HTTP.*" (\d+)`,
 )
 
-func ParseNginxLog(
-	line string,
-) (*model.Log, bool) {
+func ParseNginxLog(line string) (*events.Event, bool) {
 
-	match := nginxRegex.FindStringSubmatch(
-		line,
-	)
+	match := nginxRegex.FindStringSubmatch(line)
 
 	if len(match) < 6 {
 		return nil, false
 	}
 
 	ip := match[1]
-
 	method := match[3]
-
 	path := match[4]
-
-	statusCode, err := strconv.Atoi(
-		match[5],
-	)
+	statusCode, err := strconv.Atoi(match[5])
 
 	if err != nil {
 		return nil, false
 	}
 
-	level := "INFO"
-
+	severity := "LOW"
 	if statusCode >= 400 {
-		level = "WARNING"
+		severity = "MEDIUM"
 	}
 
-	logData := &model.Log{
-		Timestamp: time.Now().
-			UTC().
-			Format(time.RFC3339),
-
-		TenantID: "tenant_1",
-
-		Service: "nginx",
-
-		Level: level,
-
-		Message: "HTTP Request",
-
-		Metadata: map[string]interface{}{
-			"ip":          ip,
+	event := &events.Event{
+		Timestamp: time.Now().UTC(),
+		TenantID:  "tenant_1",
+		Source:    "nginx",
+		EventType: "http_access",
+		Severity:  severity,
+		IPAddress: ip,
+		Message:   "HTTP Request",
+		Payload: map[string]interface{}{
 			"method":      method,
 			"path":        path,
 			"status_code": statusCode,
 		},
 	}
 
-	return logData, true
+	return event, true
 }

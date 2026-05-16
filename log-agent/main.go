@@ -6,13 +6,14 @@ import (
 
 	"github.com/hpcloud/tail"
 
+	"siem/log-agent/kafka"
 	"siem/log-agent/parser"
 	"siem/log-agent/sender"
 )
 
 const (
-	AuthLogPath  = "/var/log/auth.log"
-	NginxLogPath = "/var/log/nginx/access.log"
+	AuthLogPath  = "test-logs/auth.log"
+	NginxLogPath = "test-logs/access.log"
 )
 
 func main() {
@@ -20,6 +21,10 @@ func main() {
 	fmt.Println(
 		"🚀 Starting Multi-Source SIEM Agent",
 	)
+
+	// Initialize Kafka Producer
+	kafka.InitProducer()
+	defer kafka.CloseProducer()
 
 	// Start auth log monitoring
 	go monitorAuthLogs()
@@ -57,11 +62,6 @@ func monitorAuthLogs() {
 			continue
 		}
 
-		fmt.Println(
-			"📄 AUTH:",
-			line.Text,
-		)
-
 		logData, ok := parser.ParseAuthLog(
 			line.Text,
 		)
@@ -77,9 +77,14 @@ func monitorAuthLogs() {
 		if err != nil {
 
 			fmt.Println(
-				"❌ Failed auth send:",
+				"❌ Failed auth send (HTTP):",
 				err,
 			)
+		}
+
+		err = kafka.ProduceLog(*logData)
+		if err != nil {
+			fmt.Println("❌ Failed auth send (Kafka):", err)
 		}
 	}
 }
@@ -110,11 +115,6 @@ func monitorNginxLogs() {
 			continue
 		}
 
-		fmt.Println(
-			"📄 NGINX:",
-			line.Text,
-		)
-
 		logData, ok := parser.ParseNginxLog(
 			line.Text,
 		)
@@ -130,9 +130,14 @@ func monitorNginxLogs() {
 		if err != nil {
 
 			fmt.Println(
-				"❌ Failed nginx send:",
+				"❌ Failed nginx send (HTTP):",
 				err,
 			)
+		}
+
+		err = kafka.ProduceLog(*logData)
+		if err != nil {
+			fmt.Println("❌ Failed nginx send (Kafka):", err)
 		}
 	}
 }

@@ -163,26 +163,13 @@ export default function App() {
 
     socket.onmessage = (event) => {
 
-      const liveAlert = JSON.parse(
-        event.data
-      )
+      const parsedData = JSON.parse(event.data)
 
       setAlerts((prev) => {
-
-        const exists = prev.some(
-          (a) =>
-            a.id === liveAlert.id &&
-            a.created_at === liveAlert.created_at
-        )
-
-        if (exists) {
-          return prev
-        }
-
-        return [
-          liveAlert,
-          ...prev,
-        ]
+        const incomingAlerts = Array.isArray(parsedData) ? parsedData : [parsedData];
+        const newAlerts = incomingAlerts.filter(incoming => !prev.some(a => a.id === incoming.id && a.created_at === incoming.created_at));
+        if (newAlerts.length === 0) return prev;
+        return [...newAlerts, ...prev];
       })
 
       fetchTrafficAnalytics()

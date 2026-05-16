@@ -5,21 +5,20 @@ import (
 	"strings"
 	"time"
 
-	"siem/log-agent/model"
+	"siem/log-agent/events"
 )
 
-var ipRegex = regexp.MustCompile(`from ([a-fA-F0-9:\\.]+)`)
+var ipRegex = regexp.MustCompile(`from ([a-fA-F0-9:\.]+)`)
 
-var userRegex = regexp.MustCompile(`for (invalid user )?(\\w+)`)
+var userRegex = regexp.MustCompile(`for (invalid user )?(\w+)`)
 
-func ParseAuthLog(line string) (*model.Log, bool) {
+func ParseAuthLog(line string) (*events.Event, bool) {
 
 	if !strings.Contains(line, "Failed password") {
 		return nil, false
 	}
 
 	ipMatch := ipRegex.FindStringSubmatch(line)
-
 	userMatch := userRegex.FindStringSubmatch(line)
 
 	ip := "unknown"
@@ -33,17 +32,18 @@ func ParseAuthLog(line string) (*model.Log, bool) {
 		username = userMatch[2]
 	}
 
-	log := &model.Log{
-		Timestamp: time.Now().UTC().Format(time.RFC3339),
+	event := &events.Event{
+		Timestamp: time.Now().UTC(),
 		TenantID:  "tenant_1",
-		Service:   "ssh",
-		Level:     "ERROR",
+		Source:    "ssh",
+		EventType: "auth_failure",
+		Severity:  "HIGH",
+		IPAddress: ip,
 		Message:   "Failed SSH login",
-		Metadata: map[string]interface{}{
-			"ip":       ip,
+		Payload: map[string]interface{}{
 			"username": username,
 		},
 	}
 
-	return log, true
+	return event, true
 }

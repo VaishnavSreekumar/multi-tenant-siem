@@ -4,34 +4,34 @@ import (
 	"errors"
 	"time"
 
-	"siem/internal/model"
+	"siem/internal/events"
 )
 
-func ValidateLog(log model.Log) error {
-	if log.TenantID == "" {
+func ValidateLog(event events.Event) error {
+	if event.TenantID == "" {
 		return errors.New("tenant_id is required")
 	}
 
-	if log.Service == "" {
-		return errors.New("service is required")
+	if event.Source == "" {
+		return errors.New("source is required")
 	}
 
-	if log.Level == "" {
-		return errors.New("level is required")
+	if event.EventType == "" {
+		return errors.New("event_type is required")
 	}
 
-	if log.Message == "" {
+	if event.Message == "" {
 		return errors.New("message is required")
 	}
 
 	// Check if timestamp is zero/uninitialized
-	if log.Timestamp.IsZero() {
+	if event.Timestamp.IsZero() {
 		return errors.New("timestamp is required or invalid")
 	}
 
 	// Optional sanity check:
 	// reject timestamps far in future
-	if log.Timestamp.After(time.Now().Add(24 * time.Hour)) {
+	if event.Timestamp.After(time.Now().Add(24 * time.Hour)) {
 		return errors.New("timestamp cannot be in the far future")
 	}
 

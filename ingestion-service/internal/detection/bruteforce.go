@@ -5,6 +5,7 @@ import (
 	"sync"
 	"time"
 
+	"siem/internal/events"
 	"siem/internal/model"
 )
 
@@ -22,14 +23,14 @@ var (
 )
 
 func DetectBruteForce(
-	log model.Log,
+	event events.Event,
 ) *model.Alert {
 
 	// --------------------------------
 	// ONLY PROCESS ERROR LOGS
 	// --------------------------------
 
-	if log.Level != "ERROR" {
+	if event.EventType != "auth_failure" {
 		return nil
 	}
 
@@ -37,9 +38,9 @@ func DetectBruteForce(
 	// EXTRACT SOURCE IP
 	// --------------------------------
 
-	ip, ok := log.Metadata["ip"].(string)
+	ip := event.IPAddress
 
-	if !ok {
+	if ip == "" || ip == "unknown" {
 
 		fmt.Println(
 			"failed to extract IP",
@@ -123,7 +124,7 @@ func DetectBruteForce(
 		)
 
 		alert := &model.Alert{
-			TenantID:  log.TenantID,
+			TenantID:  event.TenantID,
 			AlertType: "BRUTE_FORCE",
 			Severity:  "HIGH",
 			Message:   "Multiple failed login attempts detected",

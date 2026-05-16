@@ -1,12 +1,16 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
 
+	"github.com/prometheus/client_golang/prometheus/promhttp"
+
 	"siem/internal/db"
 	"siem/internal/handler"
+	"siem/internal/kafka"
 	"siem/internal/middleware"
 	"siem/internal/repository"
 	"siem/internal/service"
@@ -47,6 +51,9 @@ func main() {
 
 	// Start worker pool
 	logService.StartWorkers(3)
+
+	// Start Kafka consumer
+	go kafka.StartConsumer(context.Background(), logService)
 
 	// Handlers
 	logHandler := handler.NewHandler(
@@ -107,6 +114,9 @@ func main() {
 		"/analytics/attackers",
 		analyticsHandler.GetAttackers,
 	)
+
+	// Prometheus Metrics endpoint
+	mux.Handle("/metrics", promhttp.Handler())
 
 	// Middleware chain
 	finalHandler := middleware.CORS(

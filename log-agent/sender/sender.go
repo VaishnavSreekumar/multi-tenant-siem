@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"time"
 
-	"siem/log-agent/model"
+	"siem/log-agent/events"
 )
 
 const (
@@ -15,7 +15,7 @@ const (
 	APIKey       = "tenant1-secret-key"
 )
 
-func SendLog(logData model.Log) error {
+func SendLog(logData events.Event) error {
 
 	jsonData, err := json.Marshal(logData)
 	if err != nil {
@@ -60,10 +60,6 @@ func SendLog(logData model.Log) error {
 			resp.StatusCode,
 		)
 	}
-
-	fmt.Println(
-		"✅ Log sent successfully",
-	)
 
 	return nil
 }

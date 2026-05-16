@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"siem/internal/model"
+	"siem/internal/metrics"
 	"siem/internal/repository"
 	"siem/internal/websocket"
 )
@@ -45,6 +46,8 @@ func (s *AlertService) CreateAlert(
 	websocket.WS.Broadcast(
 		storedAlert,
 	)
+
+	metrics.AlertsGenerated.WithLabelValues(storedAlert.AlertType, storedAlert.Severity).Inc()
 
 	fmt.Printf(
 		"🚨 ALERT STORED: type=%s ip=%s tenant=%s\n",

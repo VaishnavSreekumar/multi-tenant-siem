@@ -1,6 +1,6 @@
 package queue
 
-import "siem/internal/model"
+import "siem/internal/events"
 
 // Buffered channel queue
-var LogQueue = make(chan model.Log, 1000)
+var LogQueue = make(chan events.Event, 1000)
