@@ -133,7 +133,7 @@ We encourage **Conventional Commits** to keep our repository history clean and r
 
 ## Security Vulnerability Reporting
 
-If you find a security vulnerability, **please do not open a public GitHub issue**. Instead, follow responsible disclosure guidelines by reporting it privately to the maintainers at `security@sentinelx.io` (or the repository security contact).
+If you find a security vulnerability, **please do not open a public GitHub issue**. Instead, follow responsible disclosure guidelines by reporting it privately to the maintainers at `vaishnavsreekumar301@gmail.com` (or the repository security contact).
 
 ---
 
