@@ -8,7 +8,7 @@ RUN go mod download
 
 COPY . .
 
-RUN go build -o siem-server ./cmd/server
+RUN GOMAXPROCS=2 go build -p 2 -o siem-server ./cmd/server
 
 EXPOSE 8080
 

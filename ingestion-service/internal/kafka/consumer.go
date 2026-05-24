@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/segmentio/kafka-go"
 	"siem/internal/events"
@@ -35,6 +36,7 @@ func StartConsumer(ctx context.Context, logService *service.LogService) {
 				return // Context cancelled, exit gracefully
 			}
 			log.Printf("❌ Failed to read message from Kafka: %v", err)
+			time.Sleep(2 * time.Second) // backoff sleep to prevent tight CPU loop
 			continue
 		}
 
