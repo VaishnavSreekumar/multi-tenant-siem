@@ -251,11 +251,23 @@ export default function App() {
           const parsedData = JSON.parse(event.data)
           addConsoleLog('Received real-time event packet from websocket stream', 'INFO')
           
+          const tenantMap = {
+            'tenant1-secret-key': 'tenant_1',
+            'tenant2-secret-key': 'tenant_2'
+          }
+          const currentTenantID = tenantMap[apiKey] || apiKey
+
           setAlerts((prev) => {
             const currentAlerts = Array.isArray(prev) ? prev : [];
             const incomingAlerts = Array.isArray(parsedData) ? parsedData : (parsedData && Array.isArray(parsedData.alerts) ? parsedData.alerts : [parsedData]);
-            const newAlerts = incomingAlerts.filter(
-              incoming => incoming && !currentAlerts.some(a => a && a.id === incoming.id && a.created_at === incoming.created_at)
+            
+            // Filter by active tenant
+            const tenantFilteredAlerts = incomingAlerts.filter(
+              incoming => incoming && incoming.tenant_id === currentTenantID
+            );
+
+            const newAlerts = tenantFilteredAlerts.filter(
+              incoming => !currentAlerts.some(a => a && a.id === incoming.id && a.created_at === incoming.created_at)
             );
             if (newAlerts.length === 0) return currentAlerts;
             

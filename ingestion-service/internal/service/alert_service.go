@@ -1,10 +1,15 @@
 package service
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
+	"net/http"
+	"os"
 
-	"siem/internal/model"
+	"siem/internal/detection"
 	"siem/internal/metrics"
+	"siem/internal/model"
 	"siem/internal/repository"
 	"siem/internal/websocket"
 )
@@ -22,27 +27,64 @@ func NewAlertService(
 	}
 }
 
+func sendSlackNotification(alert model.Alert) {
+	webhookURL := os.Getenv("SLACK_WEBHOOK_URL")
+	if webhookURL == "" {
+		return
+	}
+
+	payload := map[string]interface{}{
+		"text": fmt.Sprintf(
+			"🚨 *SentinelX Security Alert* 🚨\n"+
+				"*Tenant*: `%s`\n"+
+				"*Type*: `%s`\n"+
+				"*Severity*: `%s`\n"+
+				"*Source IP*: `%s`\n"+
+				"*Message*: %s",
+			alert.TenantID,
+			alert.AlertType,
+			alert.Severity,
+			alert.SourceIP,
+			alert.Message,
+		),
+	}
+
+	jsonBytes, err := json.Marshal(payload)
+	if err != nil {
+		fmt.Println("failed to marshal Slack payload:", err)
+		return
+	}
+
+	resp, err := http.Post(webhookURL, "application/json", bytes.NewBuffer(jsonBytes))
+	if err != nil {
+		fmt.Println("failed to send Slack notification:", err)
+		return
+	}
+	defer resp.Body.Close()
+}
+
 func (s *AlertService) CreateAlert(
 	alert model.Alert,
 ) error {
+	// 1. Check for duplicate alert suppression (within 5 mins)
+	if detection.ShouldSuppressAlert(alert) {
+		return nil
+	}
 
-	// Store alert in database
+	// 2. Store alert in database
 	storedAlert, err := s.repo.CreateAlert(
 		alert,
 	)
 
 	if err != nil {
-
 		fmt.Println(
 			"❌ Failed to store alert:",
 			err,
 		)
-
 		return err
 	}
 
-	// Broadcast FULL stored alert
-	// including generated ID + created_at
+	// 3. Broadcast FULL stored alert
 	websocket.WS.Broadcast(
 		storedAlert,
 	)
@@ -55,6 +97,9 @@ func (s *AlertService) CreateAlert(
 		storedAlert.SourceIP,
 		storedAlert.TenantID,
 	)
+
+	// 4. Send Slack notification asynchronously
+	go sendSlackNotification(storedAlert)
 
 	return nil
 }

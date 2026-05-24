@@ -61,7 +61,8 @@ func DetectBruteForce(
 	bruteForceMutex.Lock()
 	defer bruteForceMutex.Unlock()
 
-	entry, exists := failedLogins[ip]
+	key := event.TenantID + ":" + ip
+	entry, exists := failedLogins[key]
 
 	// --------------------------------
 	// FIRST FAILED ATTEMPT
@@ -71,10 +72,10 @@ func DetectBruteForce(
 
 		fmt.Println(
 			"tracking new attacker:",
-			ip,
+			key,
 		)
 
-		failedLogins[ip] = &FailedAttempt{
+		failedLogins[key] = &FailedAttempt{
 			Count:       1,
 			LastAttempt: time.Now(),
 		}
@@ -108,8 +109,8 @@ func DetectBruteForce(
 	entry.LastAttempt = time.Now()
 
 	fmt.Printf(
-		"BRUTE FORCE COUNT ip=%s count=%d\n",
-		ip,
+		"BRUTE FORCE COUNT key=%s count=%d\n",
+		key,
 		entry.Count,
 	)
 

@@ -87,16 +87,17 @@ func DetectWebScan(
 	mutex.Lock()
 	defer mutex.Unlock()
 
-	tracker, exists := scanMap[ip]
+	key := event.TenantID + ":" + ip
+	tracker, exists := scanMap[key]
 
 	if !exists {
 
 		fmt.Println(
 			"new attacker tracked:",
-			ip,
+			key,
 		)
 
-		scanMap[ip] = &ScanTracker{
+		scanMap[key] = &ScanTracker{
 			Count:    1,
 			LastSeen: time.Now(),
 		}
@@ -129,7 +130,7 @@ func DetectWebScan(
 
 	fmt.Printf(
 		"attacker=%s count=%d\n",
-		ip,
+		key,
 		tracker.Count,
 	)
 

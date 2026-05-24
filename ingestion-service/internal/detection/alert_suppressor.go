@@ -25,7 +25,8 @@ func ShouldSuppressAlert(
 ) bool {
 
 	key := fmt.Sprintf(
-		"%s:%s",
+		"%s:%s:%s",
+		alert.TenantID,
 		alert.AlertType,
 		alert.SourceIP,
 	)
