@@ -123,7 +123,7 @@ export default function App() {
       })
       if (alertsRes.ok) {
         const data = await alertsRes.json()
-        const validAlerts = data || []
+        const validAlerts = Array.isArray(data) ? data : (data && Array.isArray(data.alerts) ? data.alerts : [])
         setAlerts(validAlerts)
         addConsoleLog(`Loaded ${validAlerts.length} threat alerts from API`, 'INFO')
       } else {
@@ -142,9 +142,10 @@ export default function App() {
       const statusRes = await fetch(`${apiBaseUrl}/analytics/status-codes`)
       if (statusRes.ok) {
         const data = await statusRes.json()
-        const formatted = (data || []).map(item => ({
-          name: `${item.status_code}`,
-          value: item.count,
+        const rawArray = Array.isArray(data) ? data : (data && Array.isArray(data.status_codes) ? data.status_codes : [])
+        const formatted = rawArray.map(item => ({
+          name: `${item.status_code || 'unknown'}`,
+          value: item.count || 0,
         }))
         setStatusCodeAnalytics(formatted)
         addConsoleLog('Compiled status code distributions', 'INFO')
@@ -154,7 +155,8 @@ export default function App() {
       const pathsRes = await fetch(`${apiBaseUrl}/analytics/top-paths`)
       if (pathsRes.ok) {
         const data = await pathsRes.json()
-        setTopPaths(data || [])
+        const rawArray = Array.isArray(data) ? data : (data && Array.isArray(data.paths) ? data.paths : [])
+        setTopPaths(rawArray)
         addConsoleLog('Retrieved top resource access endpoint lists', 'INFO')
       }
 
@@ -162,7 +164,7 @@ export default function App() {
       const attackersRes = await fetch(`${apiBaseUrl}/analytics/attackers`)
       if (attackersRes.ok) {
         const data = await attackersRes.json()
-        const validAttackers = data || []
+        const validAttackers = Array.isArray(data) ? data : (data && Array.isArray(data.attackers) ? data.attackers : [])
         setAttackers(validAttackers)
         if (validAttackers.length > 0 && !selectedAttackerIP) {
           setSelectedAttackerIP(validAttackers[0].ip)
@@ -203,17 +205,20 @@ export default function App() {
           addConsoleLog('Received real-time event packet from websocket stream', 'INFO')
           
           setAlerts((prev) => {
-            const incomingAlerts = Array.isArray(parsedData) ? parsedData : [parsedData];
+            const currentAlerts = Array.isArray(prev) ? prev : [];
+            const incomingAlerts = Array.isArray(parsedData) ? parsedData : (parsedData && Array.isArray(parsedData.alerts) ? parsedData.alerts : [parsedData]);
             const newAlerts = incomingAlerts.filter(
-              incoming => incoming && !prev.some(a => a.id === incoming.id && a.created_at === incoming.created_at)
+              incoming => incoming && !currentAlerts.some(a => a && a.id === incoming.id && a.created_at === incoming.created_at)
             );
-            if (newAlerts.length === 0) return prev;
+            if (newAlerts.length === 0) return currentAlerts;
             
             newAlerts.forEach(alert => {
-              addConsoleLog(`[ALERT ALERT] Identified ${alert.severity} ${alert.alert_type} from IP ${alert.source_ip}`, 'WARN')
+              if (alert) {
+                addConsoleLog(`[ALERT ALERT] Identified ${alert.severity || 'UNKNOWN'} ${alert.alert_type || 'INCIDENT'} from IP ${alert.source_ip || 'unknown'}`, 'WARN')
+              }
             })
             
-            return [...newAlerts, ...prev];
+            return [...newAlerts, ...currentAlerts];
           })
           
           // Re-fetch analytics to sync
