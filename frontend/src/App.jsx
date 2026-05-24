@@ -59,6 +59,53 @@ const pieColors = [
   '#eab308', // cyber yellow
 ]
 
+function SidebarItem({ icon: Icon, label, active, onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`w-full flex items-center gap-3 rounded-2xl px-4 py-3.5 transition-all duration-300 border text-left ${
+        active
+          ? 'bg-gradient-to-r from-cyan-500/20 to-pink-500/10 border-cyan-500/30 text-white shadow-lg shadow-cyan-500/10 font-semibold'
+          : 'border-transparent hover:bg-slate-800/50 text-slate-400 hover:text-white'
+      }`}
+    >
+      <Icon size={20} className={active ? 'text-cyan-400' : 'text-slate-400'} />
+      <span>{label}</span>
+    </button>
+  )
+}
+
+function StatCard({ icon: Icon, title, value, glow, trend }) {
+  return (
+    <motion.div
+      whileHover={{ y: -4 }}
+      className={`glass-panel rounded-3xl p-6 relative overflow-hidden ${glow}`}
+    >
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <p className="text-slate-400 text-sm font-medium tracking-wide uppercase">
+            {title}
+          </p>
+          <h3 className="text-4xl font-bold mt-2 tracking-tight bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent">
+            {value}
+          </h3>
+        </div>
+        <div className="rounded-2xl bg-white/5 p-3.5 border border-white/10 shadow-inner">
+          <Icon className="text-cyan-400" size={24} />
+        </div>
+      </div>
+      <div className="flex items-center justify-between mt-2">
+        <span className="text-xs text-slate-500">SYSTEM STATUS: ACTIVE</span>
+        {trend && (
+          <span className="text-xs font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full">
+            {trend}
+          </span>
+        )}
+      </div>
+    </motion.div>
+  )
+}
+
 export default function App() {
   const [activeTab, setActiveTab] = React.useState('Overview')
   
