@@ -156,9 +156,8 @@ export default function App() {
     setConsoleLogs(prev => [...prev.slice(-35), `[${timestampStr}] [${level}] ${message}`])
   }
 
-  // API base parameters
   const apiBaseUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080';
-  const wsUrl = import.meta.env.VITE_WS_URL || 'ws://localhost:8080';
+  const wsUrl = import.meta.env.VITE_WS_URL || apiBaseUrl.replace(/^http/, 'ws');
 
   // Fetch real data
   const fetchData = async () => {
