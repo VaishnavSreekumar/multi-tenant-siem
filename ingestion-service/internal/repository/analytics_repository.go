@@ -106,7 +106,7 @@ func (r *AnalyticsRepository) GetStatusCodeAnalytics() (
 
 	defer rows.Close()
 
-	var metrics []model.StatusCodeMetric
+	metrics := []model.StatusCodeMetric{}
 
 	for rows.Next() {
 
@@ -156,7 +156,7 @@ func (r *AnalyticsRepository) GetTopPaths() (
 
 	defer rows.Close()
 
-	var paths []model.TopPath
+	paths := []model.TopPath{}
 
 	for rows.Next() {
 
@@ -206,7 +206,7 @@ func (r *AnalyticsRepository) GetAttackers() (
 
 	defer rows.Close()
 
-	var attackers []model.Attacker
+	attackers := []model.Attacker{}
 
 	for rows.Next() {
 

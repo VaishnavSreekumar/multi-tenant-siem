@@ -87,7 +87,7 @@ func (r *AlertRepository) GetAlerts(
 
 	defer rows.Close()
 
-	var alerts []model.Alert
+	alerts := []model.Alert{}
 
 	for rows.Next() {
 

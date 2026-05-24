@@ -333,41 +333,98 @@ Grafana dashboards are provisioned automatically on deployment for visualization
 
 ## Deployment
 
-### Prerequisites
+SentinelX is designed to support both local development and distributed cloud deployments.
 
+### Local Deployment (Docker Compose)
+
+#### Prerequisites
 - Docker and Docker Compose
-- Go 1.21+ (for building log-agent)
-- 4GB minimum memory for all containers
+- Go 1.21+ (if compiling log-agent outside containers)
+- Minimum 4GB memory allocated to Docker daemon
 
-### Installation
-
+#### Installation
 ```bash
-# Build and start all services
+# Clone the repository and boot the services stack
 docker-compose up -d --build
 ```
 
-### Service Endpoints
-
+#### Service Endpoints (Local)
 | Service | URL | Purpose |
 |---------|-----|---------|
 | SOC Dashboard | http://localhost:5173 | Web interface for security operations |
-| Ingestion API | http://localhost:8080 | REST API for log ingestion |
+| Ingestion API | http://localhost:8080 | REST API for log ingestion & WebSockets |
 | Prometheus | http://localhost:9090 | Metrics scrape target and console |
-| Grafana | http://localhost:3000 | Observability dashboards (credentials: admin/admin) |
+| Grafana | http://localhost:3000 | Observability dashboards (admin/admin) |
 | Kafka UI | http://localhost:8081 | Kafka cluster visualization |
 | PostgreSQL | localhost:5433 | Primary data store |
 
-### Configuration
+---
 
-Environment variables for ingestion-service (set in docker-compose.yml):
+### Cloud Production Deployment
 
+For enterprise deployments, the architecture is distributed across optimized cloud platforms:
+
+```mermaid
+flowchart LR
+    subgraph Client["🌐 Static Hosting (Vercel)"]
+        Dashboard["🎨 React 19 Frontend Dashboard"]
+    end
+
+    subgraph Backend["⚙️ Compute (Render / Railway)"]
+        GoAPI["🚀 Go Ingestion Web Service<br/>(Autoscaling CPU/RAM)"]
+    end
+
+    subgraph Data["🗄️ Database & Event Streaming"]
+        PG[(🐘 Managed PostgreSQL<br/>Render DB / Aiven / Supabase)]
+        KafkaStream[(☁️ Managed Kafka Bus<br/>Upstash / Confluent Cloud)]
+    end
+
+    Dashboard -->|HTTPS / WSS API| GoAPI
+    GoAPI -->|ACID Batches| PG
+    GoAPI -->|Pub/Sub Telemetry| KafkaStream
 ```
+
+#### 1. Frontend Deployment (Vercel)
+The React dashboard is built with Vite and TailwindCSS, making it ideal for static hosting on Vercel:
+1. Connect this repository to your **Vercel** account.
+2. Configure the build parameters:
+   - **Framework Preset**: Vite
+   - **Root Directory**: `frontend`
+   - **Build Command**: `npm run build`
+   - **Output Directory**: `dist`
+3. Add the following **Environment Variables** in Vercel:
+   - `VITE_API_URL`: The URL of your deployed Go Ingestion API (e.g. `https://sentinelx-api.onrender.com`).
+   - `VITE_WS_URL`: The WebSocket protocol version of the Go API URL (e.g. `wss://sentinelx-api.onrender.com`).
+4. Click **Deploy**.
+
+#### 2. Go Backend Ingestion API Deployment (Render / Railway)
+The Go service consumes logs, runs detection algorithms, and broadcasts alerts via WebSockets:
+1. Create a Web Service on **Render** or **Railway**.
+2. Set the Root Directory to `ingestion-service`.
+3. Configure the following environment variables:
+   - `DATABASE_URL`: Connection string to your managed PostgreSQL instance.
+   - `KAFKA_BROKERS`: Broker list for your managed Kafka (e.g. Upstash Kafka).
+   - `PORT`: Set to `8080` (or let Render assign automatically).
+4. Auto-setup is built-in: The Go backend automatically performs schema migrations on startup, creating the required `logs` and `alerts` tables and performance indexes.
+
+#### 3. Database & Streaming Config
+- **PostgreSQL**: Spin up a managed PostgreSQL database on Render or Aiven. Ensure `sslmode=require` (or configure parameters accordingly in your `DATABASE_URL`).
+- **Kafka**: Utilize a serverless Kafka provider like **Upstash Kafka** or **Confluent Cloud** to host the partition telemetry topic.
+
+---
+
+### Local Configuration
+
+Environment variables for `ingestion-service` (configured in `docker-compose.yml` for local execution):
+
+```env
 DB_HOST=postgres
 DB_PORT=5432
 DB_USER=admin
 DB_PASSWORD=root
 DB_NAME=siem
 ```
+
 
 ### Verification
 
