@@ -1,5 +1,7 @@
 # SentinelX: Enterprise Distributed SIEM Platform
 
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+
 ## Overview
 
 SentinelX is a production-grade Security Information and Event Management (SIEM) platform designed for high-volume log ingestion, real-time threat correlation, and comprehensive security operations visibility. The platform is engineered as a distributed, event-driven system that maintains operational continuity under high-load scenarios.
@@ -558,5 +560,7 @@ For issues, feature requests, or contributions, please submit via project channe
 ---
 
 ## License
+
+This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
 
 © 2026 SentinelX Project. All rights reserved.
