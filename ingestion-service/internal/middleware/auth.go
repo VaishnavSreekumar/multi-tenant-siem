@@ -4,22 +4,23 @@ import (
 	"context"
 	"net/http"
 	"os"
+
+
+	"siem/internal/auth" 
 )
 
 type ContextKey string
 
 const TenantContextKey ContextKey = "tenant_id"
 
-var apiKeys = map[string]string{
-	"tenant1-secret-key": "tenant_1",
-	"tenant2-secret-key": "tenant_2",
-}
+// Notice: The local 'apiKeys' map has been DELETED from here.
 
 func init() {
 	// Allow setting a master key via environment variable
 	masterKey := os.Getenv("MASTER_API_KEY")
 	if masterKey != "" {
-		apiKeys[masterKey] = "admin_tenant"
+		// Use the single source of truth from the auth package
+		auth.APIKeys[masterKey] = "admin_tenant"
 	}
 }
 
@@ -29,7 +30,9 @@ func Auth(next http.Handler) http.Handler {
 		r *http.Request,
 	) {
 		apiKey := r.Header.Get("x-api-key")
-		tenantID, exists := apiKeys[apiKey]
+		
+		// Use auth.APIKeys instead of the old local map
+		tenantID, exists := auth.APIKeys[apiKey]
 		if !exists {
 			http.Error(
 				w,
@@ -38,6 +41,7 @@ func Auth(next http.Handler) http.Handler {
 			)
 			return
 		}
+		
 		ctx := context.WithValue(
 			r.Context(),
 			TenantContextKey,
